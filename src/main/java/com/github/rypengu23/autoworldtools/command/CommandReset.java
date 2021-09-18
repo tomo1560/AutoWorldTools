@@ -11,13 +11,13 @@ import org.bukkit.command.CommandSender;
 
 import java.util.ArrayList;
 
-public class Command_Reset {
+public class CommandReset {
 
     private final ConfigLoader configLoader;
     private final MainConfig mainConfig;
     private final MessageConfig messageConfig;
 
-    public Command_Reset() {
+    public CommandReset() {
         this.configLoader = new ConfigLoader();
         this.mainConfig = configLoader.getMainConfig();
         this.messageConfig = configLoader.getMessageConfig();

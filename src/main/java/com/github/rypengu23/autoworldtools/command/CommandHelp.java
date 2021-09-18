@@ -9,13 +9,13 @@ import org.bukkit.command.CommandSender;
 import java.util.ArrayList;
 import java.util.List;
 
-public class Command_Help {
+public class CommandHelp {
 
     private final ConfigLoader configLoader;
     private final MainConfig mainConfig;
     private final MessageConfig messageConfig;
 
-    public Command_Help(){
+    public CommandHelp(){
         this.configLoader = new ConfigLoader();
         this.mainConfig = configLoader.getMainConfig();
         this.messageConfig = configLoader.getMessageConfig();

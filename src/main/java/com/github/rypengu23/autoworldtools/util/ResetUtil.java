@@ -1,9 +1,6 @@
 package com.github.rypengu23.autoworldtools.util;
 
-import com.github.rypengu23.autoworldtools.config.ConfigLoader;
-import com.github.rypengu23.autoworldtools.config.ConsoleMessage;
-import com.github.rypengu23.autoworldtools.config.MainConfig;
-import com.github.rypengu23.autoworldtools.config.MessageConfig;
+import com.github.rypengu23.autoworldtools.config.*;
 import org.bukkit.*;
 import org.bukkit.entity.Player;
 
@@ -15,19 +12,23 @@ public class ResetUtil {
     private final ConfigLoader configLoader;
     private final MainConfig mainConfig;
     private final MessageConfig messageConfig;
+    private final DataConfig dataConfig;
+
 
     public ResetUtil() {
         this.configLoader = new ConfigLoader();
         this.mainConfig = configLoader.getMainConfig();
         this.messageConfig = configLoader.getMessageConfig();
+        this.dataConfig = configLoader.getDataConfig();
     }
 
     /**
      * 現在時刻がリセット実行時刻か判定
+     *
      * @param nowCalendar
      * @return
      */
-    public boolean checkResetTime(Calendar nowCalendar){
+    public boolean checkResetTime(Calendar nowCalendar) {
 
         CheckUtil checkUtil = new CheckUtil();
         ConvertUtil convertUtil = new ConvertUtil();
@@ -36,7 +37,7 @@ public class ResetUtil {
         ArrayList<Calendar> resetTimeList = convertUtil.convertCalendar(mainConfig.getResetDayOfTheWeekList(), mainConfig.getResetTimeList());
 
         //比較
-        if(resetTimeList != null) {
+        if (resetTimeList != null) {
             for (Calendar resetTime : resetTimeList) {
                 if (checkUtil.checkComparisonTime(nowCalendar, resetTime)) {
                     return true;
@@ -49,10 +50,11 @@ public class ResetUtil {
     /**
      * 現在時刻がリセット前アナウンス時刻か判定。
      * 戻り地が-1の場合、アナウンス時刻ではない。
+     *
      * @param nowCalendar
      * @return
      */
-    public int checkAnnounceBeforeResetTime(Calendar nowCalendar){
+    public int checkAnnounceBeforeResetTime(Calendar nowCalendar) {
 
         CheckUtil checkUtil = new CheckUtil();
         ConvertUtil convertUtil = new ConvertUtil();
@@ -61,7 +63,7 @@ public class ResetUtil {
         ArrayList<Calendar> resetTimeList = convertUtil.convertCalendar(mainConfig.getResetDayOfTheWeekList(), mainConfig.getResetTimeList());
 
         //比較
-        if(resetTimeList != null) {
+        if (resetTimeList != null) {
             for (Calendar resetTime : resetTimeList) {
                 int result = checkUtil.checkComparisonTimeOfList(nowCalendar, resetTime, mainConfig.getResetNotifyTimeList());
                 if (result != -1) {
@@ -76,7 +78,7 @@ public class ResetUtil {
      * Configに登録された全ワールドをリセット・ゲート生成する。
      * メッセージ等も送信
      */
-    public void autoReset(){
+    public void autoReset() {
 
         CheckUtil checkUtil = new CheckUtil();
         CreateWarpGateUtil createWarpGateUtil = new CreateWarpGateUtil();
@@ -124,14 +126,15 @@ public class ResetUtil {
 
     /**
      * 引数のカウントダウン秒数をもとに、メッセージを送信。
+     *
      * @param second
      */
-    public void sendNotify(int second){
+    public void sendNotify(int second) {
 
         CheckUtil checkUtil = new CheckUtil();
         ConvertUtil convertUtil = new ConvertUtil();
 
-        if(second <= 0){
+        if (second <= 0) {
             return;
         }
 
@@ -154,59 +157,67 @@ public class ResetUtil {
 
         try {
             //ワールド名リストの取得
-            ArrayList<String> worldNameList = new ArrayList<>();
+            String worldName;
             if (worldType == 0) {
-                worldNameList = new ArrayList<String>(Arrays.asList(mainConfig.getResetWorldNameOfNormal()));
+                worldName = dataConfig.toNextNormalWorld();
             } else if (worldType == 1) {
-                worldNameList = new ArrayList<String>(Arrays.asList(mainConfig.getResetWorldNameOfNether()));
+                worldName = dataConfig.toNextNetherWorld();
             } else {
-                worldNameList = new ArrayList<String>(Arrays.asList(mainConfig.getResetWorldNameOfEnd()));
+                worldName = dataConfig.toNextEndWorld();
             }
 
             //ワールド再生成
-            for (String worldName : worldNameList) {
-                Bukkit.getLogger().info("[AutoWorldTools] " + ConsoleMessage.ResetUtil_resetStart + worldName);
-                World resetWorld = Bukkit.getWorld(worldName);
-                if(resetWorld != null){
+            Bukkit.getLogger().info("[AutoWorldTools] " + ConsoleMessage.ResetUtil_resetStart + worldName);
+            World resetWorld = Bukkit.getWorld(worldName);
+            if (resetWorld != null) {
 
-                    //プレイヤー退避
-                    movePlayer(resetWorld);
+                //プレイヤー退避
+                movePlayer(resetWorld);
 
-                    //ワールド削除
-                    Bukkit.unloadWorld(resetWorld, false);
-                    deleteDirectory(resetWorld.getWorldFolder());
-
-                    //ワールド生成
-                    WorldCreator worldCreator = new WorldCreator(worldName);
-                    Random r = new Random();
-                    worldCreator.seed(r.nextLong());
-                    if (worldType == 0) {
-                        worldCreator.environment(World.Environment.NORMAL);
-                    } else if (worldType == 1) {
-                        worldCreator.environment(World.Environment.NETHER);
-                    } else {
-                        worldCreator.environment(World.Environment.THE_END);
-                    }
-                    worldCreator.createWorld();
-
-                    //ワールドボーダーをセット
-                    int worldSize = 0;
-                    if (worldType == 0) {
-                        worldSize = mainConfig.getWorldOfNormalSize();
-                    } else if (worldType == 1) {
-                        worldSize = mainConfig.getWorldOfNetherSize();
-                    } else {
-                        worldSize = mainConfig.getWorldOfEndSize();
-                    }
-                    WorldBorder worldBorder = Bukkit.getWorld(worldName).getWorldBorder();
-                    worldBorder.setCenter(0.0, 0.0);
-                    worldBorder.setSize(worldSize);
-
-                    Bukkit.getLogger().info("[AutoWorldTools] " + ConsoleMessage.ResetUtil_resetComp + worldName);
-
-                } else {
-                    Bukkit.getLogger().warning("[AutoWorldTools] " + ConsoleMessage.ResetUtil_resetFailure + worldName);
+                if (mainConfig.isBackupBeforeDeleteWorld()) {
+                    BackupUtil backupUtil = new BackupUtil();
+                    backupUtil.createWorldFileZip(worldName);
+                    backupUtil.deleteOldFile(worldName);
                 }
+
+                //ワールド削除
+                Bukkit.unloadWorld(resetWorld, false);
+                deleteDirectory(resetWorld.getWorldFolder());
+
+                //ワールド生成
+                WorldCreator worldCreator = new WorldCreator(worldName);
+                Random r = new Random();
+                worldCreator.seed(r.nextLong());
+                if (worldType == 0) {
+                    worldCreator.environment(World.Environment.NORMAL);
+                } else if (worldType == 1) {
+                    worldCreator.environment(World.Environment.NETHER);
+                } else {
+                    worldCreator.environment(World.Environment.THE_END);
+                }
+                worldCreator.createWorld();
+
+                //ワールドボーダーをセット
+                int worldSize = 0;
+                if (worldType == 0) {
+                    worldSize = mainConfig.getWorldOfNormalSize();
+                } else if (worldType == 1) {
+                    worldSize = mainConfig.getWorldOfNetherSize();
+                } else {
+                    worldSize = mainConfig.getWorldOfEndSize();
+                }
+                WorldBorder worldBorder = Bukkit.getWorld(worldName).getWorldBorder();
+                worldBorder.setCenter(0.0, 0.0);
+                worldBorder.setSize(worldSize);
+
+
+                CommandUtil commandUtil = new CommandUtil();
+                commandUtil.executeCommands(worldType);
+
+                Bukkit.getLogger().info("[AutoWorldTools] " + ConsoleMessage.ResetUtil_resetComp + worldName);
+
+            } else {
+                Bukkit.getLogger().warning("[AutoWorldTools] " + ConsoleMessage.ResetUtil_resetFailure + worldName);
             }
 
         } catch (NoClassDefFoundError e) {
@@ -214,7 +225,7 @@ public class ResetUtil {
         }
     }
 
-    public boolean deleteDirectory(File file){
+    public boolean deleteDirectory(File file) {
         if (file.exists()) {
 
             //ファイル存在チェック
@@ -223,13 +234,13 @@ public class ResetUtil {
                 file.delete();
 
                 //対象がディレクトリの場合
-            } else if(file.isDirectory()) {
+            } else if (file.isDirectory()) {
 
                 //ディレクトリ内の一覧を取得
                 File[] files = file.listFiles();
 
                 //存在するファイル数分ループして再帰的に削除
-                for(int i=0; i<files.length; i++) {
+                for (int i = 0; i < files.length; i++) {
                     deleteDirectory(files[i]);
                 }
 
@@ -243,10 +254,10 @@ public class ResetUtil {
         }
     }
 
-    public void movePlayer(World world){
+    public void movePlayer(World world) {
         List<Player> playerList = world.getPlayers();
 
-        for(Player player:playerList){
+        for (Player player : playerList) {
             Location respawnLocation = Bukkit.getWorld("world").getSpawnLocation();
             player.teleport(respawnLocation);
         }

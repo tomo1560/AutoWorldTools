@@ -4,6 +4,8 @@ import com.github.rypengu23.autoworldtools.AutoWorldTools;
 import jp.jyn.jbukkitlib.config.YamlLoader;
 import org.bukkit.plugin.Plugin;
 
+import javax.xml.crypto.Data;
+
 public class ConfigLoader {
 
     private Plugin plugin;
@@ -16,12 +18,18 @@ public class ConfigLoader {
     private MessageConfig messageConfig;
     static MessageConfig messageConfigMemory;
 
+    private final YamlLoader dataLoader;
+    private DataConfig dataConfig;
+    static DataConfig dataConfigMemory;
+
     public ConfigLoader() {
         this.plugin = AutoWorldTools.getInstance();
         this.mainLoader = new YamlLoader(plugin, "config.yml");
         this.mainConfig = mainConfigMemory;
         this.messageLoader = new YamlLoader(plugin, "message_en.yml");
         this.messageConfig = messageConfigMemory;
+        this.dataLoader = new YamlLoader(plugin, "data.yml");
+        this.dataConfig = dataConfigMemory;
     }
 
     public void reloadConfig() {
@@ -36,17 +44,26 @@ public class ConfigLoader {
 
         //MessageConfig
         String[] messageConfigList = {"message_ja.yml", "message_en.yml"};
-        for(String fileName:messageConfigList){
+        for (String fileName : messageConfigList) {
             YamlLoader initLoader = new YamlLoader(plugin, fileName);
             initLoader.saveDefaultConfig();
         }
 
 
-        messageLoader = new YamlLoader(plugin, "message_"+ mainConfig.getLanguage() +".yml");
+        messageLoader = new YamlLoader(plugin, "message_" + mainConfig.getLanguage() + ".yml");
         messageLoader.reloadConfig();
 
         messageConfig = new MessageConfig(messageLoader.getConfig());
         messageConfigMemory = messageConfig;
+
+        dataLoader.saveDefaultConfig();
+        if (dataConfig != null){
+            dataLoader.reloadConfig();
+
+        }
+
+        dataConfig = new DataConfig(dataLoader.getConfig(), dataLoader);
+        dataConfigMemory = dataConfig;
 
         //CommandMessage
         CommandMessage commandMessage = new CommandMessage(mainConfig);
@@ -63,6 +80,10 @@ public class ConfigLoader {
 
     public MessageConfig getMessageConfig() {
         return messageConfig;
+    }
+
+    public DataConfig getDataConfig() {
+        return dataConfig;
     }
 
 }

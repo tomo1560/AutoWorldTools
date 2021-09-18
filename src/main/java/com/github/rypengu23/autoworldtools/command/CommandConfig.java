@@ -7,13 +7,13 @@ import github.scarsz.discordsrv.DiscordSRV;
 import org.bukkit.Bukkit;
 import org.bukkit.command.CommandSender;
 
-public class Command_Config {
+public class CommandConfig {
 
     private final ConfigLoader configLoader;
     private MainConfig mainConfig;
     private MessageConfig messageConfig;
 
-    public Command_Config(){
+    public CommandConfig(){
         this.configLoader = new ConfigLoader();
         this.mainConfig = configLoader.getMainConfig();
         this.messageConfig = configLoader.getMessageConfig();
@@ -36,7 +36,7 @@ public class Command_Config {
         if(mainConfig.isUseMultiversePortals()){
             try {
                 Bukkit.getLogger().info("[AutoWorldTools] "+ ConsoleMessage.AutoWorldTools_loadMultiversePortals);
-                AutoWorldTools.portals = (MultiversePortals) Bukkit.getServer().getPluginManager().getPlugin("Multiverse-Portals");
+                AutoWorldTools.multiversePortals = (MultiversePortals) Bukkit.getServer().getPluginManager().getPlugin("Multiverse-Portals");
                 Bukkit.getLogger().info("[AutoWorldTools] "+ ConsoleMessage.AutoWorldTools_loadCompMultiversePortals);
             }catch(NoClassDefFoundError e){
                 Bukkit.getLogger().warning("[AutoWorldTools] "+ ConsoleMessage.AutoWorldTools_loadFailureMultiversePortals);
