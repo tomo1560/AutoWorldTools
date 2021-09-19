@@ -1,11 +1,17 @@
 package com.github.rypengu23.autoworldtools.util;
 
+import com.github.rypengu23.autoworldtools.AutoWorldTools;
 import com.github.rypengu23.autoworldtools.config.*;
+import org.apache.commons.io.FileUtils;
 import org.bukkit.*;
 import org.bukkit.entity.Player;
 
 import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ThreadLocalRandom;
 
 public class ResetUtil {
 
@@ -174,48 +180,55 @@ public class ResetUtil {
                 //プレイヤー退避
                 movePlayer(resetWorld);
 
-                if (mainConfig.isBackupBeforeDeleteWorld()) {
-                    BackupUtil backupUtil = new BackupUtil();
-                    backupUtil.createWorldFileZip(worldName);
-                    backupUtil.deleteOldFile(worldName);
-                }
-
-                //ワールド削除
+                // 先にアンロード
+                resetWorld.save();
                 Bukkit.unloadWorld(resetWorld, false);
-                deleteDirectory(resetWorld.getWorldFolder());
 
-                //ワールド生成
-                WorldCreator worldCreator = new WorldCreator(worldName);
-                Random r = new Random();
-                worldCreator.seed(r.nextLong());
-                if (worldType == 0) {
-                    worldCreator.environment(World.Environment.NORMAL);
-                } else if (worldType == 1) {
-                    worldCreator.environment(World.Environment.NETHER);
-                } else {
-                    worldCreator.environment(World.Environment.THE_END);
-                }
-                worldCreator.createWorld();
+                CompletableFuture.runAsync(() -> {
+                    if (mainConfig.isBackupBeforeDeleteWorld()) {
+                        BackupUtil backupUtil = new BackupUtil();
+                        backupUtil.createWorldFileZip(resetWorld, false).join();
+                        backupUtil.deleteOldFile(worldName);
+                    }
+                }).thenRunAsync(() -> {
+                    //ワールド削除
+                    deleteDirectory(resetWorld.getWorldFolder());
+                }).thenRunAsync(() -> {
+                    //ワールド生成
+                    WorldCreator worldCreator = new WorldCreator(worldName);
+                    int worldSize;
+                    switch (worldType) {
+                        case 0:
+                            worldCreator.environment(World.Environment.NORMAL);
+                            worldSize = mainConfig.getWorldOfNormalSize();
+                            break;
+                        case 1:
+                            worldCreator.environment(World.Environment.NETHER);
+                            worldSize = mainConfig.getWorldOfNetherSize();
+                            break;
+                        case 2:
+                            worldCreator.environment(World.Environment.THE_END);
+                            worldSize = mainConfig.getWorldOfEndSize();
+                            break;
+                        default:
+                            throw new IllegalArgumentException("worldType " + worldType + " is not valid. Must be [0,2]");
+                    }
+                    World world = worldCreator.createWorld();
+                    if (world == null) {
+                        throw new IllegalStateException("Couldn't to create new world");
+                    }
 
-                //ワールドボーダーをセット
-                int worldSize = 0;
-                if (worldType == 0) {
-                    worldSize = mainConfig.getWorldOfNormalSize();
-                } else if (worldType == 1) {
-                    worldSize = mainConfig.getWorldOfNetherSize();
-                } else {
-                    worldSize = mainConfig.getWorldOfEndSize();
-                }
-                WorldBorder worldBorder = Bukkit.getWorld(worldName).getWorldBorder();
-                worldBorder.setCenter(0.0, 0.0);
-                worldBorder.setSize(worldSize);
+                    //ワールドボーダーをセット
+                    WorldBorder worldBorder = world.getWorldBorder();
+                    worldBorder.setCenter(0.0, 0.0);
+                    worldBorder.setSize(worldSize);
 
 
-                CommandUtil commandUtil = new CommandUtil();
-                commandUtil.executeCommands(worldType);
+                    CommandUtil commandUtil = new CommandUtil();
+                    commandUtil.executeCommands(worldType);
 
-                Bukkit.getLogger().info("[AutoWorldTools] " + ConsoleMessage.ResetUtil_resetComp + worldName);
-
+                    Bukkit.getLogger().info("[AutoWorldTools] " + ConsoleMessage.ResetUtil_resetComp + worldName);
+                }, task -> Bukkit.getScheduler().runTask(AutoWorldTools.getInstance(), task));
             } else {
                 Bukkit.getLogger().warning("[AutoWorldTools] " + ConsoleMessage.ResetUtil_resetFailure + worldName);
             }
@@ -225,32 +238,11 @@ public class ResetUtil {
         }
     }
 
-    public boolean deleteDirectory(File file) {
-        if (file.exists()) {
-
-            //ファイル存在チェック
-            if (file.isFile()) {
-                //存在したら削除する
-                file.delete();
-
-                //対象がディレクトリの場合
-            } else if (file.isDirectory()) {
-
-                //ディレクトリ内の一覧を取得
-                File[] files = file.listFiles();
-
-                //存在するファイル数分ループして再帰的に削除
-                for (int i = 0; i < files.length; i++) {
-                    deleteDirectory(files[i]);
-                }
-
-                //ディレクトリを削除する
-                file.delete();
-            }
-
-            return true;
-        } else {
-            return false;
+    public void deleteDirectory(File file) {
+        try {
+            FileUtils.deleteDirectory(file);
+        } catch (IOException exception) {
+            exception.printStackTrace();
         }
     }
 

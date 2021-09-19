@@ -5,22 +5,25 @@ import com.github.rypengu23.autoworldtools.config.ConfigLoader;
 import com.github.rypengu23.autoworldtools.config.ConsoleMessage;
 import com.github.rypengu23.autoworldtools.config.MainConfig;
 import com.github.rypengu23.autoworldtools.config.MessageConfig;
-import net.lingala.zip4j.ZipFile;
-import net.lingala.zip4j.exception.ZipException;
-import net.lingala.zip4j.model.ZipParameters;
-import net.lingala.zip4j.model.enums.CompressionLevel;
-import net.lingala.zip4j.model.enums.CompressionMethod;
+import com.google.common.collect.ImmutableMap;
 import org.apache.commons.io.FileUtils;
 import org.bukkit.Bukkit;
 import org.bukkit.World;
 import org.bukkit.scheduler.BukkitRunnable;
-import org.bukkit.scheduler.BukkitTask;
 
-import java.io.File;
-import java.io.FilenameFilter;
+import javax.annotation.CheckReturnValue;
 import java.io.IOException;
-import java.text.SimpleDateFormat;
-import java.util.*;
+import java.io.UncheckedIOException;
+import java.net.URI;
+import java.nio.file.*;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.logging.Level;
+import java.util.stream.Collectors;
 
 public class BackupUtil {
 
@@ -109,8 +112,9 @@ public class BackupUtil {
                 }
 
                 //全ワールドバックアップ
+                // TODO: CompletableFuture.allOf
                 for (String worldName : mainConfig.getBackupWorldName()) {
-                    createWorldFileZip(worldName);
+                    createWorldFileZip(worldName, true).join();
                     deleteOldFile(worldName);
                 }
 
@@ -163,62 +167,94 @@ public class BackupUtil {
      *
      * @param worldName
      */
-    public void createWorldFileZip(String worldName) {
+    @CheckReturnValue
+    public CompletableFuture<Void> createWorldFileZip(String worldName, boolean flush) {
+        World world = Bukkit.getWorld(worldName);
+        if (world == null) {
+            throw new IllegalArgumentException("World '" + worldName + "' is not found.");
+        }
+        return createWorldFileZip(world, flush);
+    }
 
-
+    @CheckReturnValue
+    public CompletableFuture<Void> createWorldFileZip(World world, boolean flush) {
+        String worldName = world.getName();
         Bukkit.getLogger().info("[AutoWorldTools] " + ConsoleMessage.BackupUtil_startZip + worldName);
 
         //ファイル名用日付取得
-        Date nowDate = new Date();
-        SimpleDateFormat format = new SimpleDateFormat("yyyyMMddHHmmss");
-        String zipFileName = format.format(nowDate);
+        String zipFileName = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"));
 
-        //バックアップ保存先フォルダを作成
-        File saveDirectory = new File(mainConfig.getBackupLocation() + worldName);
-        saveDirectory.mkdir();
-
-        //一時ファイル保存先フォルダを作成
-        File workDirectory = new File(saveDirectory.toString() + "/work" + zipFileName + "/" + worldName);
-        //workDirectory.mkdir();
-
+        Path saveDirectory = Paths.get(mainConfig.getBackupLocation()).resolve(worldName);
+        Path workDirectory = saveDirectory.resolve("work" + zipFileName);
+        Path perWorldWorkDirectory = workDirectory.resolve(worldName);
+        Path zipPath = saveDirectory.resolve(worldName + zipFileName + ".zip");
         //バックアップするワールドをセーブ
-        World world = Bukkit.getWorld(worldName);
-        //world.save();
-
-        //バックアップするワールド取得
-        File worldFile = world.getWorldFolder();
-
-        //バックアップするファイルをworkにコピー
-        try {
-            FileUtils.copyDirectory(worldFile, workDirectory);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-
-        //ZIP化設定
-        ZipParameters params = new ZipParameters();
-        params.setCompressionMethod(CompressionMethod.DEFLATE);
-        params.setCompressionLevel(CompressionLevel.FAST);
-
-        //ZIP化
-        try {
-            new ZipFile(mainConfig.getBackupLocation() + worldName + "/" + worldName + zipFileName + ".zip").addFolder(workDirectory, params);
-        } catch (ZipException e) {
-            e.printStackTrace();
-            Bukkit.getLogger().warning("[AutoWorldTools] " + ConsoleMessage.BackupUtil_backupFailure + worldName);
-        }
-
-
-        //一時ファイルを削除
-        try {
-            FileUtils.deleteDirectory(new File(saveDirectory.toString() + "/work" + zipFileName));
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-
-        Bukkit.getLogger().info("[AutoWorldTools] " + ConsoleMessage.BackupUtil_compZip + worldName);
-
-
+        return CompletableFuture.runAsync(() -> {
+                //バックアップ保存先フォルダを作成
+                //一時ファイル保存先フォルダを作成
+                try {
+                    try {
+                        Files.createDirectories(saveDirectory);
+                    } catch (FileAlreadyExistsException ignored) {
+                    }
+                    try {
+                        Files.createDirectories(perWorldWorkDirectory);
+                    } catch (FileAlreadyExistsException ignored) {
+                    }
+                } catch (IOException exception) {
+                    throw new UncheckedIOException(exception);
+                }
+            })
+            // サーバースレッドに再入し、ワールドを保存 (フラッシュ)
+            .thenRunAsync(flush ? world::save : () -> {}, task -> Bukkit.getScheduler().runTask(AutoWorldTools.getInstance(), task))
+            .thenApplyAsync(__ -> {
+                Path worldDirectory = world.getWorldFolder().toPath();
+                //バックアップするファイルをworkにコピー
+                try {
+                    FileUtils.copyDirectory(worldDirectory.toFile(), perWorldWorkDirectory.toFile());
+                } catch (IOException exception) {
+                    throw new UncheckedIOException(exception);
+                }
+                //ZIP化
+                try (FileSystem fs = FileSystems.newFileSystem(URI.create("jar:" + zipPath.toUri()), ImmutableMap.of("create", "true"))) {
+                    Files.walk(perWorldWorkDirectory).forEach(file -> {
+                        try {
+                            Path destination = fs.getPath("/").resolve(perWorldWorkDirectory.relativize(file).toString());
+                            Path parent = destination.getParent();
+                            if (parent != null && !Files.isDirectory(parent)) {
+                                try {
+                                    Files.createDirectories(parent);
+                                } catch (FileAlreadyExistsException ignored) {
+                                }
+                            }
+                            Files.copy(file, destination);
+                        } catch (FileAlreadyExistsException ignored) {
+                        } catch (IOException exception) {
+                            throw new UncheckedIOException(exception);
+                        }
+                    });
+                } catch (IOException exception) {
+                    throw new UncheckedIOException(exception);
+                }
+                return true;
+            })
+            .exceptionally(exception -> {
+                Bukkit.getLogger().log(Level.WARNING, "[AutoWorldTools] " + ConsoleMessage.BackupUtil_backupFailure + worldName, exception);
+                return false;
+            })
+            .thenAcceptAsync(succeeded -> {
+                if (succeeded) {
+                    Bukkit.getLogger().info("[AutoWorldTools] " + ConsoleMessage.BackupUtil_compZip + worldName);
+                }
+                //一時ディレクトリを削除
+                try {
+                    if (Files.isDirectory(workDirectory)) {
+                        FileUtils.deleteDirectory(workDirectory.toFile());
+                    }
+                } catch (IOException exception) {
+                    exception.printStackTrace();
+                }
+            });
     }
 
     /**
@@ -227,37 +263,27 @@ public class BackupUtil {
      * @param worldName
      */
     public void deleteOldFile(String worldName) {
-
         //バックアップロケーション内のファイル一覧取得
-        FilenameFilter filter = new FilenameFilter() {
-
-            public boolean accept(File file, String str) {
-
-                // 拡張子を指定する
-                if (str.endsWith("zip")) {
-                    return true;
-                } else {
-                    return false;
-                }
-            }
-        };
-
         //ZIPファイルリスト作成
-        File[] fileList = new File(mainConfig.getBackupLocation() + worldName).listFiles(filter);
-
-        if (fileList == null) {
+        List<Path> backupFileList;
+        try {
+            backupFileList = Files.list(Paths.get(mainConfig.getBackupLocation()).resolve(worldName))
+                .filter(p -> p.getFileName().toString().endsWith(".zip"))
+                .filter(Files::isRegularFile)
+                .sorted()
+                .collect(Collectors.toList());
+        } catch (IOException exception) {
+            Bukkit.getLogger().log(Level.WARNING, "Couldn't retrieve backup list", exception);
             return;
         }
-        List<File> backupFileList = Arrays.asList(fileList);
-
-        //ソート
-        Collections.sort(backupFileList);
-
         //上限を超えたファイル削除
         for (int i = 0; i < backupFileList.size() - mainConfig.getBackupLimit(); i++) {
-            backupFileList.get(i).delete();
+            try {
+                Files.deleteIfExists(backupFileList.get(i));
+            } catch (IOException exception) {
+                Bukkit.getLogger().log(Level.WARNING, "Couldn't delete old backup", exception);
+            }
         }
-
     }
 
 }

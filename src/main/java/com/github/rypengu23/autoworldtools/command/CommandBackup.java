@@ -57,7 +57,7 @@ public class CommandBackup {
                 BackupUtil backupUtil = new BackupUtil();
 
                 //バックアップ実行
-                backupUtil.createWorldFileZip(worldName);
+                backupUtil.createWorldFileZip(worldName, true).join();
                 backupUtil.deleteOldFile(worldName);
 
                 //バックアップ完了メッセージ
