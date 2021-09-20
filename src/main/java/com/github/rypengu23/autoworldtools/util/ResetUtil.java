@@ -8,10 +8,10 @@ import org.bukkit.entity.Player;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.Files;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ThreadLocalRandom;
 
 public class ResetUtil {
 
@@ -105,15 +105,6 @@ public class ResetUtil {
         //全てのワールドのリセット
         for (int i = 0; i <= 2; i++) {
             regenerateWorld(i);
-        }
-
-        //全てのワールドへゲートを再生成
-        if (mainConfig.isUseMultiversePortals()) {
-            for (int i = 0; i <= 2; i++) {
-                if ((i == 0 && mainConfig.isGateAutoBuildOfNormal()) || (i == 1 && mainConfig.isGateAutoBuildOfNether()) || (i == 2 && mainConfig.isGateAutoBuildOfEnd())) {
-                    createWarpGateUtil.createWarpGateUtil(i);
-                }
-            }
         }
 
         //メッセージが空白で無ければ送信
@@ -223,6 +214,12 @@ public class ResetUtil {
                     worldBorder.setCenter(0.0, 0.0);
                     worldBorder.setSize(worldSize);
 
+                    CreateWarpGateUtil createWarpGateUtil = new CreateWarpGateUtil();
+                    if (mainConfig.isUseMultiversePortals()) {
+                        if ((worldType == 0 && mainConfig.isGateAutoBuildOfNormal()) || (worldType == 1 && mainConfig.isGateAutoBuildOfNether()) || (worldType == 2 && mainConfig.isGateAutoBuildOfEnd())) {
+                            createWarpGateUtil.createWarpGateUtil(worldType);
+                        }
+                    }
 
                     CommandUtil commandUtil = new CommandUtil();
                     commandUtil.executeCommands(worldType);

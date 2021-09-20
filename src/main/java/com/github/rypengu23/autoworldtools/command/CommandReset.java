@@ -58,22 +58,6 @@ public class CommandReset {
             }
         }
 
-        //ゲート生成
-        if (mainConfig.isUseMultiversePortals()) {
-            CreateWarpGateUtil createWarpGateUtil = new CreateWarpGateUtil();
-            if (worldType != 3) {
-                if ((worldType == 0 && mainConfig.isGateAutoBuildOfNormal()) || (worldType == 1 && mainConfig.isGateAutoBuildOfNether()) || (worldType == 2 && mainConfig.isGateAutoBuildOfEnd())) {
-                    createWarpGateUtil.createWarpGateUtil(worldType);
-                }
-            } else {
-                for (int i = 0; i < 3; i++) {
-                    if ((i == 0 && mainConfig.isGateAutoBuildOfNormal()) || (i == 1 && mainConfig.isGateAutoBuildOfNether()) || (i == 2 && mainConfig.isGateAutoBuildOfEnd())) {
-                        createWarpGateUtil.createWarpGateUtil(i);
-                    }
-                }
-            }
-        }
-
         //リセット完了メッセージ
         if (worldType != 3) {
             sender.sendMessage("§a" + messageConfig.getPrefix() + " §f" + CommandMessage.AutoWorldTools_CommandResetComp + type);
