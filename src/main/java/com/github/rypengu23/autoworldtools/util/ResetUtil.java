@@ -6,12 +6,14 @@ import org.apache.commons.io.FileUtils;
 import org.bukkit.*;
 import org.bukkit.entity.Player;
 
+import javax.annotation.CheckReturnValue;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.stream.IntStream;
 
 public class ResetUtil {
 
@@ -103,22 +105,24 @@ public class ResetUtil {
         }
 
         //全てのワールドのリセット
-        for (int i = 0; i <= 2; i++) {
-            regenerateWorld(i);
-        }
+        CompletableFuture.allOf(IntStream
+            .rangeClosed(0, 2)
+            .mapToObj(this::regenerateWorld)
+            .toArray(CompletableFuture[]::new)
+        ).thenRun(() -> {
+            //メッセージが空白で無ければ送信
+            //リセット完了メッセージ
+            if (!checkUtil.checkNullOrBlank(messageConfig.getResetComplete())) {
+                Bukkit.getServer().broadcastMessage("§a" + messageConfig.getPrefix() + " §f" + messageConfig.getResetComplete());
+            }
 
-        //メッセージが空白で無ければ送信
-        //リセット完了メッセージ
-        if (!checkUtil.checkNullOrBlank(messageConfig.getResetComplete())) {
-            Bukkit.getServer().broadcastMessage("§a" + messageConfig.getPrefix() + " §f" + messageConfig.getResetComplete());
-        }
-
-        //メッセージが空白で無ければ送信
-        //リセット完了メッセージ(Discord)
-        if (mainConfig.isUseDiscordSRV() && !checkUtil.checkNullOrBlank(messageConfig.getResetCompleteOfDiscord())) {
-            DiscordUtil discordUtil = new DiscordUtil();
-            discordUtil.sendMessageMainChannel(messageConfig.getResetCompleteOfDiscord());
-        }
+            //メッセージが空白で無ければ送信
+            //リセット完了メッセージ(Discord)
+            if (mainConfig.isUseDiscordSRV() && !checkUtil.checkNullOrBlank(messageConfig.getResetCompleteOfDiscord())) {
+                DiscordUtil discordUtil = new DiscordUtil();
+                discordUtil.sendMessageMainChannel(messageConfig.getResetCompleteOfDiscord());
+            }
+        });
     }
 
     /**
@@ -150,89 +154,91 @@ public class ResetUtil {
      *
      * @param worldType
      */
-    public void regenerateWorld(int worldType) {
-
-        try {
-            //ワールド名リストの取得
-            String worldName;
-            if (worldType == 0) {
-                worldName = dataConfig.toNextNormalWorld();
-            } else if (worldType == 1) {
-                worldName = dataConfig.toNextNetherWorld();
-            } else {
-                worldName = dataConfig.toNextEndWorld();
-            }
-
-            //ワールド再生成
-            Bukkit.getLogger().info("[AutoWorldTools] " + ConsoleMessage.ResetUtil_resetStart + worldName);
-            World resetWorld = Bukkit.getWorld(worldName);
-            if (resetWorld != null) {
-
-                //プレイヤー退避
-                movePlayer(resetWorld);
-
-                // 先にアンロード
-                resetWorld.save();
-                Bukkit.unloadWorld(resetWorld, false);
-
-                CompletableFuture.runAsync(() -> {
-                    if (mainConfig.isBackupBeforeDeleteWorld()) {
-                        BackupUtil backupUtil = new BackupUtil();
-                        backupUtil.createWorldFileZip(resetWorld, false).join();
-                        backupUtil.deleteOldFile(worldName);
-                    }
-                }).thenRunAsync(() -> {
-                    //ワールド削除
-                    deleteDirectory(resetWorld.getWorldFolder());
-                }).thenRunAsync(() -> {
-                    //ワールド生成
-                    WorldCreator worldCreator = new WorldCreator(worldName);
-                    int worldSize;
-                    switch (worldType) {
-                        case 0:
-                            worldCreator.environment(World.Environment.NORMAL);
-                            worldSize = mainConfig.getWorldOfNormalSize();
-                            break;
-                        case 1:
-                            worldCreator.environment(World.Environment.NETHER);
-                            worldSize = mainConfig.getWorldOfNetherSize();
-                            break;
-                        case 2:
-                            worldCreator.environment(World.Environment.THE_END);
-                            worldSize = mainConfig.getWorldOfEndSize();
-                            break;
-                        default:
-                            throw new IllegalArgumentException("worldType " + worldType + " is not valid. Must be [0,2]");
-                    }
-                    World world = worldCreator.createWorld();
-                    if (world == null) {
-                        throw new IllegalStateException("Couldn't to create new world");
-                    }
-
-                    //ワールドボーダーをセット
-                    WorldBorder worldBorder = world.getWorldBorder();
-                    worldBorder.setCenter(0.0, 0.0);
-                    worldBorder.setSize(worldSize);
-
-                    CreateWarpGateUtil createWarpGateUtil = new CreateWarpGateUtil();
-                    if (mainConfig.isUseMultiversePortals()) {
-                        if ((worldType == 0 && mainConfig.isGateAutoBuildOfNormal()) || (worldType == 1 && mainConfig.isGateAutoBuildOfNether()) || (worldType == 2 && mainConfig.isGateAutoBuildOfEnd())) {
-                            createWarpGateUtil.createWarpGateUtil(worldType);
-                        }
-                    }
-
-                    CommandUtil commandUtil = new CommandUtil();
-                    commandUtil.executeCommands(worldType);
-
-                    Bukkit.getLogger().info("[AutoWorldTools] " + ConsoleMessage.ResetUtil_resetComp + worldName);
-                }, task -> Bukkit.getScheduler().runTask(AutoWorldTools.getInstance(), task));
-            } else {
-                Bukkit.getLogger().warning("[AutoWorldTools] " + ConsoleMessage.ResetUtil_resetFailure + worldName);
-            }
-
-        } catch (NoClassDefFoundError e) {
-            Bukkit.getLogger().warning("[AutoWorldTools] " + ConsoleMessage.ResetUtil_resetFailureNotConnectedMultiverseCore);
+    @CheckReturnValue
+    public CompletableFuture<Void> regenerateWorld(int worldType) {
+        //ワールド名リストの取得
+        String worldName;
+        if (worldType == 0) {
+            worldName = dataConfig.toNextNormalWorld();
+        } else if (worldType == 1) {
+            worldName = dataConfig.toNextNetherWorld();
+        } else {
+            worldName = dataConfig.toNextEndWorld();
         }
+
+        //ワールド再生成
+        Bukkit.getLogger().info("[AutoWorldTools] " + ConsoleMessage.ResetUtil_resetStart + worldName);
+        World resetWorld = Bukkit.getWorld(worldName);
+        if (resetWorld == null) {
+            Bukkit.getLogger().warning("[AutoWorldTools] " + ConsoleMessage.ResetUtil_resetFailure + worldName);
+            return CompletableFuture.completedFuture(null);
+        }
+
+        //プレイヤー退避
+        movePlayer(resetWorld);
+
+        // 先にアンロード
+        resetWorld.save();
+        Bukkit.unloadWorld(resetWorld, false);
+
+        CompletableFuture<Void> cf;
+        if (mainConfig.isBackupBeforeDeleteWorld()) {
+            BackupUtil backupUtil = new BackupUtil();
+            cf = backupUtil.createWorldFileZip(resetWorld, false)
+                .thenRunAsync(() -> backupUtil.deleteOldFile(worldName));
+        } else {
+            cf = CompletableFuture.completedFuture(null);
+        }
+
+        return cf.thenRunAsync(() -> {
+            //ワールド削除
+            deleteDirectory(resetWorld.getWorldFolder());
+        }).thenRunAsync(() -> {
+            //ワールド生成
+            WorldCreator worldCreator = new WorldCreator(worldName);
+            int worldSize;
+            switch (worldType) {
+                case 0:
+                    worldCreator.environment(World.Environment.NORMAL);
+                    worldSize = mainConfig.getWorldOfNormalSize();
+                    break;
+                case 1:
+                    worldCreator.environment(World.Environment.NETHER);
+                    worldSize = mainConfig.getWorldOfNetherSize();
+                    break;
+                case 2:
+                    worldCreator.environment(World.Environment.THE_END);
+                    worldSize = mainConfig.getWorldOfEndSize();
+                    break;
+                default:
+                    throw new IllegalArgumentException("worldType " + worldType + " is not valid. Must be [0,2]");
+            }
+            World world = worldCreator.createWorld();
+            if (world == null) {
+                throw new IllegalStateException("Couldn't to create new world");
+            }
+
+            //ワールドボーダーをセット
+            WorldBorder worldBorder = world.getWorldBorder();
+            worldBorder.setCenter(0.0, 0.0);
+            worldBorder.setSize(worldSize);
+
+            try {
+                CreateWarpGateUtil createWarpGateUtil = new CreateWarpGateUtil();
+                if (mainConfig.isUseMultiversePortals()) {
+                    if ((worldType == 0 && mainConfig.isGateAutoBuildOfNormal()) || (worldType == 1 && mainConfig.isGateAutoBuildOfNether()) || (worldType == 2 && mainConfig.isGateAutoBuildOfEnd())) {
+                        createWarpGateUtil.createWarpGateUtil(worldType);
+                    }
+                }
+            } catch (NoClassDefFoundError e) {
+                Bukkit.getLogger().warning("[AutoWorldTools] " + ConsoleMessage.ResetUtil_resetFailureNotConnectedMultiverseCore);
+            }
+
+            CommandUtil commandUtil = new CommandUtil();
+            commandUtil.executeCommands(worldType);
+
+            Bukkit.getLogger().info("[AutoWorldTools] " + ConsoleMessage.ResetUtil_resetComp + worldName);
+        }, task -> Bukkit.getScheduler().runTask(AutoWorldTools.getInstance(), task));
     }
 
     public void deleteDirectory(File file) {
