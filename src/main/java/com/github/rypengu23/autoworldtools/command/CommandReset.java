@@ -10,6 +10,8 @@ import com.github.rypengu23.autoworldtools.util.ResetUtil;
 import org.bukkit.command.CommandSender;
 
 import java.util.ArrayList;
+import java.util.concurrent.CompletableFuture;
+import java.util.stream.IntStream;
 
 public class CommandReset {
 
@@ -32,13 +34,15 @@ public class CommandReset {
         }
 
         //メッセージ用にワールドタイプをセット
-        String type = "";
+        String type;
         if (worldType == 0) {
             type = "NORMAL";
         } else if (worldType == 1) {
             type = "NETHER";
         } else if (worldType == 2) {
             type = "THE END";
+        } else {
+            type = "";
         }
 
         //リセット開始メッセージ
@@ -50,21 +54,25 @@ public class CommandReset {
 
         //ワールド再生成
         ResetUtil resetUtil = new ResetUtil();
+        CompletableFuture<Void> cf;
         if (worldType != 3) {
-            resetUtil.regenerateWorld(worldType);
+            cf = resetUtil.regenerateWorld(worldType);
         } else {
-            for (int i = 0; i < 3; i++) {
-                resetUtil.regenerateWorld(i);
+            cf = CompletableFuture.allOf(IntStream
+                .rangeClosed(0, 2)
+                .mapToObj(resetUtil::regenerateWorld)
+                .toArray(CompletableFuture[]::new)
+            );
+        }
+
+        cf.thenRunAsync(() -> {
+            //リセット完了メッセージ
+            if (worldType != 3) {
+                sender.sendMessage("§a" + messageConfig.getPrefix() + " §f" + CommandMessage.AutoWorldTools_CommandResetComp + type);
+            } else {
+                sender.sendMessage("§a" + messageConfig.getPrefix() + " §f" + CommandMessage.AutoWorldTools_CommandAllResetComp);
             }
-        }
-
-        //リセット完了メッセージ
-        if (worldType != 3) {
-            sender.sendMessage("§a" + messageConfig.getPrefix() + " §f" + CommandMessage.AutoWorldTools_CommandResetComp + type);
-        } else {
-            sender.sendMessage("§a" + messageConfig.getPrefix() + " §f" + CommandMessage.AutoWorldTools_CommandAllResetComp);
-        }
-
+        });
     }
 
     public void showResetInfo(CommandSender sender) {
