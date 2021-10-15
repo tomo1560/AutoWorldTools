@@ -7,6 +7,7 @@ import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.plugin.Plugin;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
 
@@ -45,6 +46,12 @@ public class MainConfig {
     private String[] resetWorldNameOfNormal;
     private String[] resetWorldNameOfNether;
     private String[] resetWorldNameOfEnd;
+
+    // リセット前バックアップ
+    private boolean backupBeforeDeleteWorld;
+
+    // リセット後実行コマンド
+    private List<String>  executeCommandsAfterBackup;
 
     //ワールドサイズ
     private int worldOfNormalSize;
@@ -114,7 +121,7 @@ public class MainConfig {
         //リセット時間
         resetTimeList = config.getString("resetTime.resetTime").split(",");
         resetDayOfTheWeekList = config.getString("resetTime.resetDayOfTheWeek").split(",");
-        if(!config.getString("resetTime.resetNotifyTime").equals("")) {
+        if (!config.getString("resetTime.resetNotifyTime").equals("")) {
             resetNotifyTimeList = Stream.of(config.getString("resetTime.resetNotifyTime").split(",")).mapToInt(Integer::parseInt).toArray();
         }
 
@@ -122,6 +129,11 @@ public class MainConfig {
         resetWorldNameOfNormal = config.getString("resetWorldInfo.worldNameOfNormal").split(",");
         resetWorldNameOfNether = config.getString("resetWorldInfo.worldNameOfNether").split(",");
         resetWorldNameOfEnd = config.getString("resetWorldInfo.worldNameOfEnd").split(",");
+
+        //削除前自動バックアップ可否
+        backupBeforeDeleteWorld = config.getBoolean("resetWorldInfo.backupBeforeDeleteWorld");
+
+        executeCommandsAfterBackup = config.getStringList("resetWorldInfo.executeCommandsAfterBackup");
 
         //ワールドボーダー
         worldOfNormalSize = config.getInt("border.worldOfNormalSize");
@@ -147,7 +159,7 @@ public class MainConfig {
         //バックアップ時間
         backupTimeList = config.getString("backupTime.backupTime").split(",");
         backupDayOfTheWeekList = config.getString("backupTime.backupDayOfTheWeek").split(",");
-        if(!config.getString("backupTime.backupNotifyTime").equals("")) {
+        if (!config.getString("backupTime.backupNotifyTime").equals("")) {
             backupNotifyTimeList = Stream.of(config.getString("backupTime.backupNotifyTime").split(",")).mapToInt(Integer::parseInt).toArray();
         }
 
@@ -158,7 +170,7 @@ public class MainConfig {
         //再起動時間
         restartTimeList = config.getString("restartTime.restartTime").split(",");
         restartDayOfTheWeekList = config.getString("restartTime.restartDayOfTheWeek").split(",");
-        if(!config.getString("restartTime.restartNotifyTime").equals("")) {
+        if (!config.getString("restartTime.restartNotifyTime").equals("")) {
             restartNotifyTimeList = Stream.of(config.getString("restartTime.restartNotifyTime").split(",")).mapToInt(Integer::parseInt).toArray();
         }
     }
@@ -182,6 +194,8 @@ public class MainConfig {
         map.put("resetWorldInfo.worldNameOfNormal", "string");
         map.put("resetWorldInfo.worldNameOfNether", "string");
         map.put("resetWorldInfo.worldNameOfEnd", "string");
+        map.put("resetWorldInfo.backupBeforeDeleteWorld", "boolean");
+        map.put("resetWorldInfo.executeCommandsAfterBackup", "stringList");
 
         map.put("border.worldOfNormalSize", "int");
         map.put("border.worldOfNetherSize", "int");
@@ -322,6 +336,14 @@ public class MainConfig {
 
     public void setResetWorldNameOfEnd(String[] resetWorldNameOfEnd) {
         this.resetWorldNameOfEnd = resetWorldNameOfEnd;
+    }
+
+    public boolean isBackupBeforeDeleteWorld() {
+        return backupBeforeDeleteWorld;
+    }
+
+    public List<String> getExecuteCommandsAfterBackup(){
+        return executeCommandsAfterBackup;
     }
 
     public int getWorldOfNormalSize() {

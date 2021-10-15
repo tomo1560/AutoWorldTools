@@ -3,6 +3,8 @@ package com.github.rypengu23.autoworldtools;
 import com.github.rypengu23.autoworldtools.command.*;
 import com.github.rypengu23.autoworldtools.config.*;
 import com.github.rypengu23.autoworldtools.watch.TimeSurveillance;
+import com.onarandombox.MultiverseCore.MultiverseCore;
+import com.onarandombox.MultiverseCore.api.MultiverseWorld;
 import com.onarandombox.MultiversePortals.MultiversePortals;
 import github.scarsz.discordsrv.DiscordSRV;
 import org.bukkit.Bukkit;
@@ -29,7 +31,9 @@ public final class AutoWorldTools extends JavaPlugin {
     private MessageConfig messageConfig;
 
     //Multiverse
-    public static MultiversePortals portals;
+    public static MultiversePortals multiversePortals;
+
+    public static MultiverseCore multiverseCore;
 
     //DiscordSRV
     public static DiscordSRV discordSRV;
@@ -47,12 +51,12 @@ public final class AutoWorldTools extends JavaPlugin {
 
         //起動メッセージ
         //Startup message
-        Bukkit.getLogger().info("[AutoWorldTools] == AutoWorldTools Ver"+ pluginVersion +" ==");
+        Bukkit.getLogger().info("[AutoWorldTools] == AutoWorldTools Ver" + pluginVersion + " ==");
         Bukkit.getLogger().info("[AutoWorldTools] " + ConsoleMessage.AutoWorldTools_startupPlugin);
 
         //Configの更新確認
         ConfigUpdater configUpdater = new ConfigUpdater();
-        if(configUpdater.configUpdateCheck() == true){
+        if (configUpdater.configUpdateCheck() == true) {
             configLoader = new ConfigLoader();
             configLoader.reloadConfig();
             mainConfig = configLoader.getMainConfig();
@@ -61,10 +65,11 @@ public final class AutoWorldTools extends JavaPlugin {
 
         if (mainConfig.isUseMultiversePortals()) {
             //Multiverse-Portals接続
-            //Connect Multiverse-Portals
+            //Connect Multiverse
             try {
                 Bukkit.getLogger().info("[AutoWorldTools] " + ConsoleMessage.AutoWorldTools_loadMultiversePortals);
-                portals = (MultiversePortals) Bukkit.getServer().getPluginManager().getPlugin("Multiverse-Portals");
+                multiversePortals = (MultiversePortals) Bukkit.getServer().getPluginManager().getPlugin("Multiverse-Portals");
+                multiverseCore = (MultiverseCore) Bukkit.getServer().getPluginManager().getPlugin("Multiverse-Core");
                 Bukkit.getLogger().info("[AutoWorldTools] " + ConsoleMessage.AutoWorldTools_loadCompMultiversePortals);
             } catch (NoClassDefFoundError e) {
                 Bukkit.getLogger().warning("[AutoWorldTools] " + ConsoleMessage.AutoWorldTools_loadFailureMultiversePortals);
@@ -90,11 +95,9 @@ public final class AutoWorldTools extends JavaPlugin {
 
         //時刻監視
         //time surveillance
-        if (mainConfig.isAutoReset()) {
-            Bukkit.getLogger().info("[AutoWorldTools] " + ConsoleMessage.AutoWorldTools_startupScheduler);
-            TimeSurveillance timeSurveillance = new TimeSurveillance();
-            timeSurveillance.timeSurveillance();
-        }
+        Bukkit.getLogger().info("[AutoWorldTools] " + ConsoleMessage.AutoWorldTools_startupScheduler);
+        TimeSurveillance timeSurveillance = new TimeSurveillance();
+        timeSurveillance.timeSurveillance();
 
         Bukkit.getLogger().info("[AutoWorldTools] " + ConsoleMessage.AutoWorldTools_startupCompPlugin);
     }
@@ -119,12 +122,12 @@ public final class AutoWorldTools extends JavaPlugin {
                 if (args.length == 1) {
                     //Configリロード
                     if (args[0].equalsIgnoreCase("reload")) {
-                        Command_Config command_config = new Command_Config();
+                        CommandConfig command_config = new CommandConfig();
                         command_config.reloadConfig(sender);
 
                     } else if (args[0].equalsIgnoreCase("help")) {
                         //helpコマンド ページ1
-                        Command_Help command_help = new Command_Help();
+                        CommandHelp command_help = new CommandHelp();
                         command_help.showHelp(sender, "0");
                     } else {
                         //コマンドの形式が不正な場合
@@ -134,7 +137,7 @@ public final class AutoWorldTools extends JavaPlugin {
                 } else if (args.length == 2) {
                     if (args[0].equalsIgnoreCase("reset")) {
                         //リセット
-                        Command_Reset reset = new Command_Reset();
+                        CommandReset reset = new CommandReset();
                         if (args[1].equalsIgnoreCase("normal")) {
                             reset.resetWorld(sender, 0);
 
@@ -156,7 +159,7 @@ public final class AutoWorldTools extends JavaPlugin {
 
                     } else if (args[0].equalsIgnoreCase("backup")) {
                         //バックアップ
-                        Command_Backup backup = new Command_Backup();
+                        CommandBackup backup = new CommandBackup();
                         if (args[1].equalsIgnoreCase("info")) {
                             backup.showBackupInfo(sender);
                         } else {
@@ -165,7 +168,7 @@ public final class AutoWorldTools extends JavaPlugin {
 
                     } else if (args[0].equalsIgnoreCase("restart")) {
                         //再起動
-                        Command_Restart restart = new Command_Restart();
+                        CommandRestart restart = new CommandRestart();
                         if (args[1].equalsIgnoreCase("info")) {
                             restart.showRestartInfo(sender);
                         } else {
@@ -175,7 +178,7 @@ public final class AutoWorldTools extends JavaPlugin {
 
                     } else if (args[0].equalsIgnoreCase("help")) {
                         //helpコマンド
-                        Command_Help command_help = new Command_Help();
+                        CommandHelp command_help = new CommandHelp();
                         command_help.showHelp(sender, args[1]);
                     } else {
                         //コマンドの形式が不正な場合

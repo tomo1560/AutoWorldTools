@@ -79,6 +79,12 @@ resetWorldInfo:
   # ジ・エンド
   worldNameOfEnd: "material_the_end"
 
+  # ワールド削除前にバックアップを行うか？
+  backupBeforeDeleteWorld: true
+
+  # バックアップ後に実行するコマンド一覧
+  executeCommandsAfterBackup: []
+
 border:
   # World border size after reset (diameter)
   # リセット後のワールドサイズを指定（直径）

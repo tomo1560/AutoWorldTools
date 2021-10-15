@@ -10,14 +10,16 @@ import com.github.rypengu23.autoworldtools.util.ResetUtil;
 import org.bukkit.command.CommandSender;
 
 import java.util.ArrayList;
+import java.util.concurrent.CompletableFuture;
+import java.util.stream.IntStream;
 
-public class Command_Reset {
+public class CommandReset {
 
     private final ConfigLoader configLoader;
     private final MainConfig mainConfig;
     private final MessageConfig messageConfig;
 
-    public Command_Reset() {
+    public CommandReset() {
         this.configLoader = new ConfigLoader();
         this.mainConfig = configLoader.getMainConfig();
         this.messageConfig = configLoader.getMessageConfig();
@@ -32,13 +34,15 @@ public class Command_Reset {
         }
 
         //メッセージ用にワールドタイプをセット
-        String type = "";
+        String type;
         if (worldType == 0) {
             type = "NORMAL";
         } else if (worldType == 1) {
             type = "NETHER";
         } else if (worldType == 2) {
             type = "THE END";
+        } else {
+            type = "";
         }
 
         //リセット開始メッセージ
@@ -50,37 +54,25 @@ public class Command_Reset {
 
         //ワールド再生成
         ResetUtil resetUtil = new ResetUtil();
+        CompletableFuture<Void> cf;
         if (worldType != 3) {
-            resetUtil.regenerateWorld(worldType);
+            cf = resetUtil.regenerateWorld(worldType);
         } else {
-            for (int i = 0; i < 3; i++) {
-                resetUtil.regenerateWorld(i);
-            }
+            cf = CompletableFuture.allOf(IntStream
+                .rangeClosed(0, 2)
+                .mapToObj(resetUtil::regenerateWorld)
+                .toArray(CompletableFuture[]::new)
+            );
         }
 
-        //ゲート生成
-        if (mainConfig.isUseMultiversePortals()) {
-            CreateWarpGateUtil createWarpGateUtil = new CreateWarpGateUtil();
+        cf.thenRunAsync(() -> {
+            //リセット完了メッセージ
             if (worldType != 3) {
-                if ((worldType == 0 && mainConfig.isGateAutoBuildOfNormal()) || (worldType == 1 && mainConfig.isGateAutoBuildOfNether()) || (worldType == 2 && mainConfig.isGateAutoBuildOfEnd())) {
-                    createWarpGateUtil.createWarpGateUtil(worldType);
-                }
+                sender.sendMessage("§a" + messageConfig.getPrefix() + " §f" + CommandMessage.AutoWorldTools_CommandResetComp + type);
             } else {
-                for (int i = 0; i < 3; i++) {
-                    if ((i == 0 && mainConfig.isGateAutoBuildOfNormal()) || (i == 1 && mainConfig.isGateAutoBuildOfNether()) || (i == 2 && mainConfig.isGateAutoBuildOfEnd())) {
-                        createWarpGateUtil.createWarpGateUtil(i);
-                    }
-                }
+                sender.sendMessage("§a" + messageConfig.getPrefix() + " §f" + CommandMessage.AutoWorldTools_CommandAllResetComp);
             }
-        }
-
-        //リセット完了メッセージ
-        if (worldType != 3) {
-            sender.sendMessage("§a" + messageConfig.getPrefix() + " §f" + CommandMessage.AutoWorldTools_CommandResetComp + type);
-        } else {
-            sender.sendMessage("§a" + messageConfig.getPrefix() + " §f" + CommandMessage.AutoWorldTools_CommandAllResetComp);
-        }
-
+        });
     }
 
     public void showResetInfo(CommandSender sender) {

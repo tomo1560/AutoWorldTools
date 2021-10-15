@@ -14,14 +14,14 @@ import org.bukkit.scheduler.BukkitRunnable;
 
 import java.util.ArrayList;
 
-public class Command_Backup {
+public class CommandBackup {
 
     private final Plugin plugin;
     private final ConfigLoader configLoader;
     private final MainConfig mainConfig;
     private final MessageConfig messageConfig;
 
-    public Command_Backup() {
+    public CommandBackup() {
         this.plugin = AutoWorldTools.getInstance();
         this.configLoader = new ConfigLoader();
         this.mainConfig = configLoader.getMainConfig();
@@ -57,7 +57,7 @@ public class Command_Backup {
                 BackupUtil backupUtil = new BackupUtil();
 
                 //バックアップ実行
-                backupUtil.createWorldFileZip(worldName);
+                backupUtil.createWorldFileZip(worldName, true).join();
                 backupUtil.deleteOldFile(worldName);
 
                 //バックアップ完了メッセージ
