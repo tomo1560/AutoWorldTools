@@ -34,6 +34,8 @@ public class MainConfig {
     private boolean autoRestart;
     //バックアップ保存上限
     private int backupLimit;
+    // Essentialsホームの削除可否
+    private boolean deleteEssentialsHome;
 
     //リセット時間
     private String[] resetTimeList;
@@ -117,6 +119,9 @@ public class MainConfig {
         //バックアップ保存上限
         backupLimit = config.getInt("setting.backupLimit");
 
+        // Essentialsホーム削除可否
+        useDiscordSRV = config.getBoolean("setting.deleteEssentialsHome");
+
 
         //リセット時間
         resetTimeList = config.getString("resetTime.resetTime").split(",");
@@ -186,6 +191,7 @@ public class MainConfig {
         map.put("setting.autoBackup", "boolean");
         map.put("setting.autoRestart", "boolean");
         map.put("setting.backupLimit", "int");
+        map.put("setting.deleteEssentialsHome", "boolean");
 
         map.put("resetTime.resetDayOfTheWeek", "string");
         map.put("resetTime.resetTime", "string");
@@ -288,6 +294,14 @@ public class MainConfig {
 
     public void setBackupLimit(int backupLimit) {
         this.backupLimit = backupLimit;
+    }
+
+    public boolean isDeleteEssentialsHome() {
+        return deleteEssentialsHome;
+    }
+
+    public void setDeleteEssentialsHome(boolean deleteEssentialsHome) {
+        this.deleteEssentialsHome = deleteEssentialsHome;
     }
 
     public String[] getResetTimeList() {

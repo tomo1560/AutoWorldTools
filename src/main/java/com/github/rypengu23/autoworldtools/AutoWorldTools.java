@@ -1,5 +1,6 @@
 package com.github.rypengu23.autoworldtools;
 
+import com.earth2me.essentials.Essentials;
 import com.github.rypengu23.autoworldtools.command.*;
 import com.github.rypengu23.autoworldtools.config.*;
 import com.github.rypengu23.autoworldtools.watch.TimeSurveillance;
@@ -37,6 +38,9 @@ public final class AutoWorldTools extends JavaPlugin {
 
     //DiscordSRV
     public static DiscordSRV discordSRV;
+
+    //EssentialsX
+    public static Essentials essentials;
 
     @Override
     public void onEnable() {
@@ -83,6 +87,17 @@ public final class AutoWorldTools extends JavaPlugin {
                 Bukkit.getLogger().info("[AutoWorldTools] " + ConsoleMessage.AutoWorldTools_loadCompDiscordSRV);
             } catch (NoClassDefFoundError e) {
                 Bukkit.getLogger().warning("[AutoWorldTools] " + ConsoleMessage.AutoWorldTools_loadFailureDiscordSRV);
+            }
+        }
+
+        if (mainConfig.isDeleteEssentialsHome()) {
+            //Essentials接続
+            try {
+                Bukkit.getLogger().info("[AutoWorldTools] " + ConsoleMessage.AutoWorldTools_loadEssentials);
+                discordSRV = (DiscordSRV) Bukkit.getServer().getPluginManager().getPlugin("Essentials");
+                Bukkit.getLogger().info("[AutoWorldTools] " + ConsoleMessage.AutoWorldTools_loadCompEssentials);
+            } catch (NoClassDefFoundError e) {
+                Bukkit.getLogger().warning("[AutoWorldTools] " + ConsoleMessage.AutoWorldTools_loadFailureEssentials);
             }
         }
 

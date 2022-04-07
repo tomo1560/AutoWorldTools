@@ -17,6 +17,10 @@ public class ConsoleMessage {
     public static String AutoWorldTools_loadCompDiscordSRV;
     public static String AutoWorldTools_loadFailureDiscordSRV;
 
+    public static String AutoWorldTools_loadEssentials;
+    public static String AutoWorldTools_loadCompEssentials;
+    public static String AutoWorldTools_loadFailureEssentials;
+
     public static String AutoWorldTools_startupScheduler;
 
 
@@ -74,6 +78,10 @@ public class ConsoleMessage {
             AutoWorldTools_loadCompDiscordSRV = "DiscordSRVの読み込みが完了しました。";
             AutoWorldTools_loadFailureDiscordSRV = "DiscordSRVの読み込みに失敗しました。";
 
+            AutoWorldTools_loadEssentials = "Essentialsの読み込みを行います。";
+            AutoWorldTools_loadCompEssentials = "Essentialsの読み込みが完了しました。";
+            AutoWorldTools_loadFailureEssentials = "Essentialsの読み込みに失敗しました。";
+
             AutoWorldTools_startupScheduler = "スケジューラを起動。";
 
             ResetUtil_resetStart = "リセット開始。 ワールド名:";
@@ -118,6 +126,10 @@ public class ConsoleMessage {
             AutoWorldTools_loadMultiversePortals = "Load:Multiverse-Portals";
             AutoWorldTools_loadCompMultiversePortals = "Load complete:Multiverse-Portals";
             AutoWorldTools_loadFailureMultiversePortals = "Load failure:Multiverse-Portals";
+
+            AutoWorldTools_loadEssentials = "Load:Essentials";
+            AutoWorldTools_loadCompEssentials = "Load complete:Essentials";
+            AutoWorldTools_loadFailureEssentials = "Load failure:Essentials";
 
             AutoWorldTools_startupScheduler = "Scheduler startup.";
 
