@@ -5,7 +5,8 @@ import com.github.rypengu23.autoworldtools.config.ConfigLoader;
 import com.github.rypengu23.autoworldtools.config.MainConfig;
 import com.github.rypengu23.autoworldtools.config.MessageConfig;
 import com.github.rypengu23.autoworldtools.util.ConvertUtil;
-import com.github.rypengu23.autoworldtools.util.CreateWarpGateUtil;
+import com.github.rypengu23.autoworldtools.util.MultiversePortalsUtil;
+import com.github.rypengu23.autoworldtools.util.DynmapUtil;
 import com.github.rypengu23.autoworldtools.util.ResetUtil;
 import org.bukkit.command.CommandSender;
 
@@ -26,6 +27,8 @@ public class CommandReset {
     }
 
     public void resetWorld(CommandSender sender, int worldType) {
+
+        DynmapUtil dynmapUtil = new DynmapUtil();
 
         //権限所持チェック
         if (!sender.hasPermission("autoWorldTools.reset")) {
@@ -63,6 +66,12 @@ public class CommandReset {
                 .mapToObj(resetUtil::regenerateWorld)
                 .toArray(CompletableFuture[]::new)
             );
+        }
+
+        //リロードが必要なプラグインをリロードする
+        if (mainConfig.isUseMultiversePortals()){
+            MultiversePortalsUtil multiversePortalsUtil = new MultiversePortalsUtil();
+            multiversePortalsUtil.reloadPlugin();
         }
 
         cf.thenRunAsync(() -> {

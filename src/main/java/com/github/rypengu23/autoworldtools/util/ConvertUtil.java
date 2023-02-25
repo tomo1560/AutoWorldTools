@@ -1,6 +1,7 @@
 package com.github.rypengu23.autoworldtools.util;
 
 import com.github.rypengu23.autoworldtools.config.MessageConfig;
+import com.github.rypengu23.autoworldtools.model.ResetWorldModel;
 
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -136,5 +137,15 @@ public class ConvertUtil {
         }
 
         return doTimeList;
+    }
+
+    public ArrayList<String> convertResetWorldModelListToWorldNameList(ArrayList<ResetWorldModel> worldModels){
+
+        ArrayList<String> result = new ArrayList<>();
+        for(ResetWorldModel model:worldModels){
+            result.add(model.getWorldName());
+        }
+
+        return result;
     }
 }

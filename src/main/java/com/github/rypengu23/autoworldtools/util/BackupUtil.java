@@ -13,6 +13,7 @@ import org.bukkit.scheduler.BukkitRunnable;
 
 import javax.annotation.CheckReturnValue;
 import java.io.IOException;
+import java.nio.file.FileSystemException;
 import java.io.UncheckedIOException;
 import java.net.URI;
 import java.nio.file.*;
@@ -212,7 +213,13 @@ public class BackupUtil {
                 //バックアップするファイルをworkにコピー
                 try {
                     FileUtils.copyDirectory(worldDirectory.toFile(), perWorldWorkDirectory.toFile());
+                } catch (FileSystemException e){
+                    if(!e.getFile().contains("session.lock")) {
+                        System.out.println(e.getFile());
+                        Bukkit.getLogger().warning("[AutoWorldTools] " + ConsoleMessage.BackupUtil_backupFailure);
+                    }
                 } catch (IOException exception) {
+                    Bukkit.getLogger().warning("[AutoWorldTools] " + ConsoleMessage.BackupUtil_backupFailure);
                     throw new UncheckedIOException(exception);
                 }
                 //ZIP化

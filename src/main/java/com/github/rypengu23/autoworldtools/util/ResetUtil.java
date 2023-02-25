@@ -3,10 +3,17 @@ package com.github.rypengu23.autoworldtools.util;
 import com.github.rypengu23.autoworldtools.AutoWorldTools;
 import com.github.rypengu23.autoworldtools.config.*;
 import org.apache.commons.io.FileUtils;
+import com.github.rypengu23.autoworldtools.config.ConfigLoader;
+import com.github.rypengu23.autoworldtools.config.ConsoleMessage;
+import com.github.rypengu23.autoworldtools.config.MainConfig;
+import com.github.rypengu23.autoworldtools.config.MessageConfig;
+import com.github.rypengu23.autoworldtools.model.ResetWorldModel;
+import org.apache.commons.io.FileUtils;
 import org.bukkit.*;
 import org.bukkit.entity.Player;
 
 import javax.annotation.CheckReturnValue;
+
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -89,7 +96,7 @@ public class ResetUtil {
     public void autoReset() {
 
         CheckUtil checkUtil = new CheckUtil();
-        CreateWarpGateUtil createWarpGateUtil = new CreateWarpGateUtil();
+        MultiversePortalsUtil multiversePortalsUtil = new MultiversePortalsUtil();
 
         //メッセージが空白で無ければ送信
         //リセット開始メッセージ
@@ -185,7 +192,7 @@ public class ResetUtil {
         if (mainConfig.isBackupBeforeDeleteWorld()) {
             BackupUtil backupUtil = new BackupUtil();
             cf = backupUtil.createWorldFileZip(resetWorld, false)
-                .thenRunAsync(() -> backupUtil.deleteOldFile(worldName));
+                    .thenRunAsync(() -> backupUtil.deleteOldFile(worldName));
         } else {
             cf = CompletableFuture.completedFuture(null);
         }
