@@ -230,15 +230,21 @@ public class ResetUtil {
             worldBorder.setCenter(0.0, 0.0);
             worldBorder.setSize(worldSize);
 
+            // ポータルを再生成
             try {
-                CreateWarpGateUtil createWarpGateUtil = new CreateWarpGateUtil();
+                MultiversePortalsUtil multiversePortalsUtil = new MultiversePortalsUtil();
                 if (mainConfig.isUseMultiversePortals()) {
                     if ((worldType == 0 && mainConfig.isGateAutoBuildOfNormal()) || (worldType == 1 && mainConfig.isGateAutoBuildOfNether()) || (worldType == 2 && mainConfig.isGateAutoBuildOfEnd())) {
-                        createWarpGateUtil.createWarpGateUtil(worldType);
+                        multiversePortalsUtil.createWarpGateUtil(worldType);
                     }
                 }
             } catch (NoClassDefFoundError e) {
                 Bukkit.getLogger().warning("[AutoWorldTools] " + ConsoleMessage.ResetUtil_resetFailureNotConnectedMultiverseCore);
+            }
+
+            if (mainConfig.isUseDynmap()) {
+                DynmapUtil dynmapUtil = new DynmapUtil();
+                dynmapUtil.deleteMapDataOfWorldName(worldName);
             }
 
             CommandUtil commandUtil = new CommandUtil();
